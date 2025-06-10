@@ -24,8 +24,3 @@ spec:
       input:
         message: >
           🎉 Template executed for “${{ parameters.name }}” — all good!
-
-  output:
-    links:
-      - title: View task in Scaffolder
-        url: ${{ steps['log'].output.taskUrl }}
