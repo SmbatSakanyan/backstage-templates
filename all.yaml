@@ -6,4 +6,4 @@ metadata:
 spec:
   targets:
     - ./template.yaml
-    - ./aws/template.yaml
+    - https://github.com/SmbatSakanyan/backstage-templates/blob/main/aws/template.yaml
