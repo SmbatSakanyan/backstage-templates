@@ -1,0 +1,136 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: register-eks-cluster
+  title: Register existing EKS cluster4444444444
+  description: >
+    Adds an existing Amazon EKS cluster to the Backstage catalog and, if you want,
+    stores a kubeconfig secret the Kubernetes plugin can use.
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Cluster detailssss
+      required:
+        - clusterName
+        - region
+        - endpoint
+        - caData
+        - roleArn
+        - owner
+      properties:
+        clusterName:
+          type: string
+          title: Cluster name
+        region:
+          type: string
+          title: AWS region
+          default: eu-central-1            # change defaults as you like
+        endpoint:
+          type: string
+          title: API server endpoint (https://...)
+        caData:
+          type: string
+          title: Cluster CA (base64)
+          ui:widget: textarea
+        roleArn:
+          type: string
+          title: IAM role ARN Backstage will assume
+        owner:
+          type: string
+          title: Catalog owner (group:team-a etc.)
+
+    - title: Where to store the entity file
+      required: [repoUrl, branch]
+      properties:
+        repoUrl:
+          type: string
+          title: GitLab repo (group/project)
+          description: e.g. gitlab.com/example/platform-catalog
+        branch:
+          type: string
+          title: Branch to commit to
+          default: main
+
+  steps:
+    # 1. Render catalog-info.yaml from the skeleton folder
+    - id: fetchSkeleton
+      name: Scaffold entity file
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: .
+        values:
+          clusterName: ${{ parameters.clusterName }}
+          region: ${{ parameters.region }}
+          endpoint: ${{ parameters.endpoint }}
+          caData: ${{ parameters.caData }}
+          roleArn: ${{ parameters.roleArn }}
+          owner: ${{ parameters.owner }}
+
+    # 2. Commit to GitLab
+    - id: publish
+      name: Commit to repo
+      action: publish:gitlab
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branch: ${{ parameters.branch }}
+        filePath: catalog-info.yaml
+        commitMessage: "feat: register EKS cluster ${{ parameters.clusterName }}"
+
+    # 3. Register in Backstage catalog
+    - id: register
+      name: Register entity
+      action: catalog:register
+      input:
+        repoUrl: ${{ steps.publish.output.repoContentsUrl }}
+
+    # 4. (Optional) store kubeconfig for the Kubernetes plugin
+    - id: kubeSecret
+      name: Store kubeconfig Secret
+      if: ${{ parameters.caData }}
+      action: kubernetes:apply
+      input:
+        kubeContext: backstage-cluster                    # change if Backstage runs elsewhere
+        manifest: |
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: eks-${{ parameters.clusterName }}-kubeconfig
+            namespace: backstage
+          stringData:
+            kubeconfig: |
+              apiVersion: v1
+              kind: Config
+              clusters:
+              - cluster:
+                  server: ${{ parameters.endpoint }}
+                  certificate-authority-data: ${{ parameters.caData }}
+                name: ${{ parameters.clusterName }}
+              contexts:
+              - context:
+                  cluster: ${{ parameters.clusterName }}
+                  user: aws
+                name: ${{ parameters.clusterName }}
+              current-context: ${{ parameters.clusterName }}
+              users:
+              - name: aws
+                user:
+                  exec:
+                    apiVersion: "client.authentication.k8s.io/v1beta1"
+                    command: "aws"
+                    args:
+                      - eks
+                      - get-token
+                      - --cluster-name
+                      - ${{ parameters.clusterName }}
+                      - --region
+                      - ${{ parameters.region }}
+                      - --role
+                      - ${{ parameters.roleArn }}
+
+  output:
+    links:
+      - title: View entity in catalog
+        url: ${{ steps.register.output.entityRef }}
