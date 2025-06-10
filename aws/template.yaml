@@ -44,7 +44,4 @@ spec:
 
           ${{ steps['write'].output.content }}
 
-  output:
-    files:
-      - title: View task in Scaffolder
 
