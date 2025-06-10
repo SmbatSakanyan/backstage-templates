@@ -44,4 +44,8 @@ spec:
 
           ${{ steps['write'].output.content }}
 
+  output:
+    text:
+      - title: "✅ Done"
+        text: "done"
 
