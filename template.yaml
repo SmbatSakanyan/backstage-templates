@@ -1,26 +1,21 @@
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
-  name: hello-world
-  title: Hello World example
-  description: A super-simple template you can use to test that templates run.
+  name: aws-cred-test
+  title: Test AWS credentials
 spec:
-  owner: platform-team        # change to any existing user/group in your catalog
-  type: service               # free-form; doesn’t affect execution
-
-  parameters:
-    - title: Basic info
-      required: [name]
-      properties:
-        name:
-          type: string
-          title: Component name
-          description: Will be echoed back in the log
+  owner: guests
+  type: service
 
   steps:
-    - id: log
-      name: Log a greeting
-      action: debug:log        # built-in action—no extra deps needed
-      input:
-        message: >
-          🎉 Template executed for “${{ parameters.name }}” — all good!
+    - id: identity
+      name: Who am I?
+      action: aws:whoami
+
+  output:
+    text: |
+      ✅ Credentials work!
+
+      • AWS Account:  ${{ steps.identity.output.account }}
+      • Caller ARN:   ${{ steps.identity.output.arn }}
+      • User ID:      ${{ steps.identity.output.userId }}
