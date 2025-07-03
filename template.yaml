@@ -13,9 +13,9 @@ spec:
       action: aws:whoami
 
   output:
-    text: |
-      ✅ Credentials work!
-
-      • AWS Account:  ${{ steps.identity.output.account }}
-      • Caller ARN:   ${{ steps.identity.output.arn }}
-      • User ID:      ${{ steps.identity.output.userId }}
+    text: 
+      - title: ✅ Credentials work!
+        content: |
+          • **AWS Account**:  ${{ steps.identity.output.account }}
+          • **Caller ARN** :  ${{ steps.identity.output.arn }}
+          • **User ID**    :  ${{ steps.identity.output.userId }}
