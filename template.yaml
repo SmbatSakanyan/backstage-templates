@@ -2,20 +2,49 @@ apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: aws-cred-test
-  title: Test AWS credentials
+  title: AWS – assume role & show identity
+  description: |
+    Runs the custom action aws:whoami+assume, assuming a role and
+    printing the caller's AWS account / ARN plus an S3 bucket list.
 spec:
-  owner: guests
-  type: service
-
+  owner: platform-team            # change to your catalog group
+  type: service                   # any type is fine
+  parameters:
+    - title: AWS connection
+      required: [awsRoleArn]
+      properties:
+        awsRoleArn:
+          type: string
+          title: Role ARN to assume
+          description: >
+            The IAM role the backend should assume during this task.
+          default: arn:aws:iam::123456789012:role/backstage-scaffolder
+        externalId:
+          type: string
+          title: External ID (optional)
+          default: backstage-scaffolder
+        region:
+          type: string
+          title: AWS Region
+          default: eu-central-1
+          enum: [us-east-1, us-west-2, eu-central-1, ap-south-1]
   steps:
-    - id: identity
-      name: Who am I?
-      action: aws:whoami
+    - id: whoami
+      name: Assume role & print identity
+      action: aws:whoami+assume
+      input:
+        awsRoleArn: ${{ parameters.awsRoleArn }}
+        externalId: ${{ parameters.externalId }}
+        region: ${{ parameters.region }}
 
   output:
-    text: 
-      - title: ✅ Credentials work!
+    text:
+      - title: Caller identity
         content: |
-          • **AWS Account**:  ${{ steps.identity.output.account }}
-          • **Caller ARN** :  ${{ steps.identity.output.arn }}
-          • **User ID**    :  ${{ steps.identity.output.userId }}
+          **Account:** ${{ steps.whoami.output.accountId }}
+
+          **Assumed ARN:** ${{ steps.whoami.output.assumedArn }}
+
+      - title: Buckets visible through the role
+        content: |
+          `${{ steps.whoami.output.buckets | dump }}`
