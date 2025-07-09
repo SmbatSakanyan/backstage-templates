@@ -9,29 +9,29 @@ spec:
   type: service
 
   parameters:
-    - title: IPAM Pool to inspect
-      required: [poolId]
+    - title: Pool & netmask
+      required: [poolId, mask]
       properties:
         poolId:
           type: string
           title: IPAM pool ID
-    - title: AWS Region (optional)
-      properties:
-        region:
-          type: string
-          default: us-east-1
+        mask:
+          type: integer
+          title: Desired netmask length
+          default: 24
 
   steps:
     - id: list
-      name: Query AWS IPAM
-      action: company:listIpamPoolCidrs
+      name: Find free space
+      action: company:listIpamFreeCidrs      # <— new ID
       input:
         ipamPoolId: ${{ parameters.poolId }}
-        region: ${{ parameters.region }}
+        mask: ${{ parameters.mask }}
+        # region: us-east-1 (optional)
 
     - id: log
-      name: Display results
+      name: Show result
       action: debug:log
       input:
         message: |
-          Available CIDRs 👉 ${{ steps.list.output.availableCidrs }}
+          Free /${{ parameters.mask }} blocks → ${{ steps.list.output.availableCidrs }}
