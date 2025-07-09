@@ -1,0 +1,37 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: ipam-list-cidrs
+  title: IPAM – List available CIDRs
+  description: Show all free CIDRs in a given IPAM pool
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: IPAM Pool to inspect
+      required: [poolId]
+      properties:
+        poolId:
+          type: string
+          title: IPAM pool ID
+    - title: AWS Region (optional)
+      properties:
+        region:
+          type: string
+          default: us-east-1
+
+  steps:
+    - id: list
+      name: Query AWS IPAM
+      action: company:listIpamPoolCidrs
+      input:
+        ipamPoolId: ${{ parameters.poolId }}
+        region: ${{ parameters.region }}
+
+    - id: log
+      name: Display results
+      action: debug:log
+      input:
+        message: |
+          Available CIDRs 👉 ${{ steps.list.output.availableCidrs }}
