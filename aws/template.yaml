@@ -3,81 +3,71 @@ kind: Template
 metadata:
   name: ipam-cidr-tool
   title: IPAM – allocate or release CIDR
+  description: Reserve a new CIDR in an AWS IPAM pool or release an existing allocation
 spec:
   owner: platform-team
   type: service
 
-  # ──────────────────────────────────────────────────────────────
+  # ───────────────────────── parameters ─────────────────────────
   parameters:
-    - title: Choose operation
-      required: [operation]
+    - title: Operation and pool
+      required: [operation, ipamPoolId]
       properties:
         operation:
+          title: What do you want to do?
           type: string
           enum: [allocate, release]
           default: allocate
-
-    - title: IPAM Pool
-      required: [ipamPoolId]
-      properties:
         ipamPoolId:
+          title: IPAM pool ID
           type: string
-          title: IPAM Pool ID
 
-    # extra input only when Allocate path
+    # inputs that appear only on Allocate
     - if:
-        properties: { operation: { const: allocate } }
+        properties:
+          operation:
+            const: allocate
       then:
-        required: [mask]
+        title: Allocate parameters
+        required: [mask, cidr]
         properties:
           mask:
-            type: integer
             title: Mask bits
+            type: integer
             default: 24
+          cidr:
+            title: CIDR block to allocate
+            type: string
+            ui:field: FreeCidrPicker
+            ui:options:
+              ipamPoolId: '{{ parameters.ipamPoolId }}'
+              mask: '{{ parameters.mask }}'
 
-    # extra input only when Release path
+    # inputs that appear only on Release
     - if:
-        properties: { operation: { const: release } }
+        properties:
+          operation:
+            const: release
       then:
+        title: Release parameters
         required: [cidr]
         properties:
           cidr:
+            title: CIDR block to release
             type: string
-            title: CIDR to release
 
-  # ──────────────────────────────────────────────────────────────
+  # ────────────────────────── steps ────────────────────────────
   steps:
-
-    # ALLOCATE path ── Step A1: get 5 free blocks
-    - id: candidates
-      name: Find free CIDRs
+    # ALLOCATE path
+    - id: allocate
+      name: Allocate CIDR
       if: ${{ parameters.operation == 'allocate' }}
-      action: aws:ipam:list-candidates
+      action: aws:ipam:allocate-cidr
       input:
         ipamPoolId: ${{ parameters.ipamPoolId }}
-        mask:       ${{ parameters.mask }}
+        cidr:       ${{ parameters.cidr }}
 
-    # ALLOCATE path ── Step A2: let user pick one
-    - id: choose
-      name: Pick a CIDR
-      if: ${{ parameters.operation == 'allocate' }}
-      action: scaffolder:prompt                        # built-in
-      input:
-        title: Select a CIDR block
-        type: select
-        options: ${{ steps.candidates.output.candidates }}   # array -> dropdown
-
-    # ALLOCATE path ── Step A3: for now just echo the choice
-    - id: echo
-      name: Echo choice
-      if: ${{ parameters.operation == 'allocate' }}
-      action: scaffolder:debug
-      input:
-        message: >
-          User chose CIDR ${{ steps.choose.output }} —
-          allocate logic will be implemented later.
-
-    # RELEASE path ── single step
+    # RELEASE path
     - id: release
       name: Release CIDR
       if: ${{ parameters.operation == 'release' }}
@@ -86,9 +76,9 @@ spec:
         ipamPoolId: ${{ parameters.ipamPoolId }}
         cidr:       ${{ parameters.cidr }}
 
-  # ──────────────────────────────────────────────────────────────
+  # ────────────────────────── outputs ──────────────────────────
   output:
     text:
       - title: Result
         content: |
-          ${{ steps.echo.output.message || steps.release.output.releasedCidr }}
+          ${{ steps.allocate.output.cidr   || steps.release.output.releasedCidr }}
