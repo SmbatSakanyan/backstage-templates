@@ -29,19 +29,11 @@ spec:
             const: allocate
       then:
         title: Allocate parameters
-        required: [mask, cidr]
+        required: [cidr]
         properties:
-          mask:
-            title: Mask bits
-            type: integer
-            default: 24
           cidr:
             title: CIDR block to allocate
             type: string
-            ui:field: FreeCidrPicker
-            ui:options:
-              ipamPoolId: '{{ parameters.ipamPoolId }}'
-              mask: '{{ parameters.mask }}'
 
     # inputs that appear only on Release
     - if:
